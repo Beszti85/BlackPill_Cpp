@@ -54,7 +54,7 @@ UART_HandleTypeDef huart1;
 
 osThreadId Taks10msHandle;
 osThreadId Task100msHandle;
-osThreadId Task1secHandle;
+osThreadId TaskAsyncHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -68,9 +68,9 @@ static void MX_SPI1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM1_Init(void);
-void StartDefaultTask(void const * argument);
-void StartTask02(void const * argument);
-void StartTask03(void const * argument);
+void StartTask10ms(void const * argument);
+void StartTask100ms(void const * argument);
+void StartTaskAsync(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -137,16 +137,16 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of Taks10ms */
-  osThreadDef(Taks10ms, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(Taks10ms, StartTask10ms, osPriorityNormal, 0, 128);
   Taks10msHandle = osThreadCreate(osThread(Taks10ms), NULL);
 
   /* definition and creation of Task100ms */
-  osThreadDef(Task100ms, StartTask02, osPriorityNormal, 0, 128);
+  osThreadDef(Task100ms, StartTask100ms, osPriorityNormal, 0, 128);
   Task100msHandle = osThreadCreate(osThread(Task100ms), NULL);
 
-  /* definition and creation of Task1sec */
-  osThreadDef(Task1sec, StartTask03, osPriorityLow, 0, 128);
-  Task1secHandle = osThreadCreate(osThread(Task1sec), NULL);
+  /* definition and creation of TaskAsync */
+  osThreadDef(TaskAsync, StartTaskAsync, osPriorityLow, 0, 128);
+  TaskAsyncHandle = osThreadCreate(osThread(TaskAsync), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -556,14 +556,14 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_StartTask10ms */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the Taks10ms thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
+/* USER CODE END Header_StartTask10ms */
+void StartTask10ms(void const * argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
@@ -576,40 +576,61 @@ void StartDefaultTask(void const * argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartTask02 */
+/* USER CODE BEGIN Header_StartTask100ms */
 /**
-* @brief Function implementing the Task10ms thread.
+* @brief Function implementing the Task100ms thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask02 */
-void StartTask02(void const * argument)
+/* USER CODE END Header_StartTask100ms */
+void StartTask100ms(void const * argument)
 {
-  /* USER CODE BEGIN StartTask02 */
+  /* USER CODE BEGIN StartTask100ms */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartTask02 */
+  /* USER CODE END StartTask100ms */
 }
 
-/* USER CODE BEGIN Header_StartTask03 */
+/* USER CODE BEGIN Header_StartTaskAsync */
 /**
-* @brief Function implementing the Task1sec thread.
+* @brief Function implementing the TaskAsync thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask03 */
-void StartTask03(void const * argument)
+/* USER CODE END Header_StartTaskAsync */
+void StartTaskAsync(void const * argument)
 {
-  /* USER CODE BEGIN StartTask03 */
+  /* USER CODE BEGIN StartTaskAsync */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartTask03 */
+  /* USER CODE END StartTaskAsync */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM10 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM10) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
 }
 
 /**
