@@ -1,3 +1,7 @@
+[submodule "ChipDriversCpp"]
+	path = ChipDriversCpp
+	url = https://github.com/Beszti85/ChipDriversCpp.git
+	branch = main
 [submodule "ChipDrivers"]
 	path = ChipDrivers
 	url = https://github.com/Beszti85/ChipDrivers.git

@@ -24,6 +24,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "button.h"
+#include "mcp23s17.h"
+#include "pca9685pw.h"
+#include "max30100.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +60,8 @@ osThreadId Task100msHandle;
 osThreadId TaskAsyncHandle;
 /* USER CODE BEGIN PV */
 static Button ButtonBlue = Button(false, 10u);
+
+static PCA9685_Handler_t LedDriverHandle = {.ptrHI2c = &hi2c1, .portOE = OUT_PB12_GPIO_Port, .pinOE = OUT_PB12_Pin, .Address = 0x80u };
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -116,7 +121,8 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  MAX30100_Init();
+  PCA9685_ReadModeRegs(&LedDriverHandle);
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -395,7 +401,7 @@ static void MX_SPI1_Init(void)
   * @brief TIM1 Initialization Function
   * @param None
   * @retval None
-  */media
+  */
 static void MX_TIM1_Init(void)
 {
 

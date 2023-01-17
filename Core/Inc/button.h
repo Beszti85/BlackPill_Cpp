@@ -21,7 +21,7 @@ enum ButtonState
 class Button
 {
 public:
-  Button( bool actState, uint16_t debValue ) { activeState = actState; debounceTh = debounceCtr; };
+  Button( bool actState, uint16_t debValue ) { activeState = actState; debounceTh = debValue; };
   void Update( bool value );
   bool IsPressed( void )  { return isPressed; };
   bool IsReleased( void ) { return isReleased; };
