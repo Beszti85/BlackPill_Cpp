@@ -541,7 +541,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(CS_FLASH_GPIO_Port, CS_FLASH_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, CS_RF_Pin|CS_SD_Pin|OUT_PB12_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, CS_RF_Pin|CS_SD_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(OUT_PB12_GPIO_Port, OUT_PB12_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : LED_BRD_Pin PC14 CE_NRF24L01_Pin */
   GPIO_InitStruct.Pin = LED_BRD_Pin|GPIO_PIN_14|CE_NRF24L01_Pin;
