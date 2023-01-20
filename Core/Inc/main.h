@@ -61,8 +61,10 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_BRD_Pin GPIO_PIN_13
 #define LED_BRD_GPIO_Port GPIOC
-#define CE_NRF24L01_Pin GPIO_PIN_15
-#define CE_NRF24L01_GPIO_Port GPIOC
+#define OUT_PC14_Pin GPIO_PIN_14
+#define OUT_PC14_GPIO_Port GPIOC
+#define CE_RF_Pin GPIO_PIN_15
+#define CE_RF_GPIO_Port GPIOC
 #define CS_FLASH_Pin GPIO_PIN_4
 #define CS_FLASH_GPIO_Port GPIOA
 #define CS_RF_Pin GPIO_PIN_2
