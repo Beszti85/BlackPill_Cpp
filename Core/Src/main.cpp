@@ -27,6 +27,8 @@
 #include "mcp23s17.h"
 #include "pca9685pw.h"
 #include "max30100.h"
+#include "esp8266_at.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,7 +42,10 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define ESP_UART_DMA_BUFFER_SIZE 1024u
+#define ESP_RX_BUFFER_SIZE       4096u
 
+#define ESP_EVENT_FLAG_MASK   0x00000001uL
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -54,14 +59,25 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 osThreadId Taks10msHandle;
 osThreadId Task100msHandle;
 osThreadId TaskAsyncHandle;
+
 /* USER CODE BEGIN PV */
 static Button ButtonBlue = Button(false, 10u);
 
 static PCA9685_Handler_t LedDriverHandle = {.ptrHI2c = &hi2c1, .portOE = OUT_PB12_GPIO_Port, .pinOE = OUT_PB12_Pin, .Address = 0x80u };
+
+uint8_t EspDmaBuffer[ESP_UART_DMA_BUFFER_SIZE];
+uint8_t EspRxBuffer[ESP_RX_BUFFER_SIZE];
+
+uint16_t oldPos = 0;
+uint16_t newPos = 0;
+
+bool  ESP_ResponseOK = 0u;
+bool  ESP_MessageReceived = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -83,7 +99,55 @@ void StartTaskAsync(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+  ESP_ResponseOK = false;
+  if (huart->Instance == USART1)
+  {
+    /* Check if it is an OK: dont need to copy, just set the acknowledge flag  */
+    if( strncmp((const char*)EspDmaBuffer, "\r\nOK\r\n", 6) )
+    {
+      ESP_ResponseOK = true;
+    }
+    else
+    {
+      oldPos = newPos;  // Update the last position before copying new data
 
+      /* If the data in large and it is about to exceed the buffer size, we have to route it to the start of the buffer
+       * This is to maintain the circular buffer
+       * The old data in the main buffer will be overlapped
+       */
+      if (oldPos+Size > ESP_RX_BUFFER_SIZE)  // If the current position + new data size is greater than the main buffer
+      {
+        uint16_t datatocopy = ESP_RX_BUFFER_SIZE-oldPos;  // find out how much space is left in the main buffer
+        memcpy ((uint8_t *)EspRxBuffer+oldPos, EspDmaBuffer, datatocopy);  // copy data in that remaining space
+
+        oldPos = 0;  // point to the start of the buffer
+        memcpy ((uint8_t *)EspRxBuffer, (uint8_t *)EspDmaBuffer+datatocopy, (Size-datatocopy));  // copy the remaining data
+        newPos = (Size-datatocopy);  // update the position
+      }
+
+      /* if the current position + new data size is less than the main buffer
+       * we will simply copy the data into the buffer and update the position
+       */
+      else
+      {
+        memcpy ((uint8_t *)EspRxBuffer+oldPos, EspDmaBuffer, Size);
+        newPos = Size+oldPos;
+      }
+    }
+
+    /* start the DMA again */
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, (uint8_t *) EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
+    __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+
+    if( ESP_ResponseOK == false )
+    {
+      ESP_MessageReceived = true;
+      osSignalSet(TaskAsyncHandle, ESP_EVENT_FLAG_MASK);
+    }
+  }
+}
 /* USER CODE END 0 */
 
 /**
@@ -123,6 +187,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
   MAX30100_Init();
   PCA9685_ReadModeRegs(&LedDriverHandle);
+  ESP8266_Init(&huart1, EspRxBuffer);
+  HAL_Delay(10u);
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart1, EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
+  __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -409,6 +477,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
@@ -423,6 +492,15 @@ static void MX_TIM1_Init(void)
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
@@ -441,6 +519,10 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -508,6 +590,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
 }
 
@@ -533,7 +618,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(CS_FLASH_GPIO_Port, CS_FLASH_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, CS_RF_Pin|CS_SD_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, CS_RF_Pin|CS_SD_Pin|OUT_PB12_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : LED_BRD_Pin PC14 CE_NRF24L01_Pin */
   GPIO_InitStruct.Pin = LED_BRD_Pin|GPIO_PIN_14|CE_NRF24L01_Pin;
@@ -549,8 +634,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(CS_FLASH_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : CS_RF_Pin CS_SD_Pin */
-  GPIO_InitStruct.Pin = CS_RF_Pin|CS_SD_Pin;
+  /*Configure GPIO pins : CS_RF_Pin CS_SD_Pin OUT_PB12_Pin */
+  GPIO_InitStruct.Pin = CS_RF_Pin|CS_SD_Pin|OUT_PB12_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -577,7 +662,7 @@ void StartTask10ms(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(10);
   }
   /* USER CODE END 5 */
 }
@@ -588,6 +673,7 @@ void StartTask10ms(void const * argument)
 * @param argument: Not used
 * @retval None
 */
+uint8_t Task100ms_LedCtr = 0u;
 /* USER CODE END Header_StartTask100ms */
 void StartTask100ms(void const * argument)
 {
@@ -595,7 +681,13 @@ void StartTask100ms(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    Task100ms_LedCtr++;
+    if( Task100ms_LedCtr == 5u)
+    {
+      HAL_GPIO_TogglePin(LED_BRD_GPIO_Port, LED_BRD_Pin);
+      Task100ms_LedCtr = 0u;
+    }
+    osDelay(100);
   }
   /* USER CODE END StartTask100ms */
 }
@@ -613,8 +705,14 @@ void StartTaskAsync(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    HAL_GPIO_TogglePin(LED_BRD_GPIO_Port, LED_BRD_Pin);
-    osDelay(1000);
+    osEvent event = osSignalWait(ESP_EVENT_FLAG_MASK, osWaitForever);
+    if(   (event.status == osEventSignal)
+       && (event.value.signals == ESP_EVENT_FLAG_MASK) )
+    {
+      // Process the incoming data that is not OK
+      ESP8266_AtReportHandler(EspRxBuffer);
+    }
+    osDelay(1);
   }
   /* USER CODE END StartTaskAsync */
 }
