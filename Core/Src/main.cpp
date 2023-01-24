@@ -82,6 +82,9 @@ uint16_t newPos = 0;
 
 bool  ESP_ResponseOK = 0u;
 bool  ESP_MessageReceived = false;
+
+volatile uint16_t ADC_RawData[7u] = {0u};
+float ADC_Voltage[7u];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -734,6 +737,12 @@ void StartTask10ms(void const * argument)
   /* Infinite loop */
   for(;;)
   {
+    // Convert ADC raw data from last running
+    for( uint16_t i = 0u; i < 7u; i++ )
+    {
+      ADC_Voltage[i] = (float)ADC_RawData[i] * 3.3f / 4096.0f;
+    }
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_RawData[0u], 7u);
     osDelay(10);
   }
   /* USER CODE END 5 */
