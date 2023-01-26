@@ -117,6 +117,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     if( strncmp((const char*)EspDmaBuffer, "\r\nOK\r\n", 6) )
     {
       ESP_ResponseOK = true;
+      ESP8266_SetOkResponseFlag(true);
     }
     else
     {
