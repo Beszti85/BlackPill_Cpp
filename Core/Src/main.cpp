@@ -771,6 +771,7 @@ void StartTask100ms(void const * argument)
     if( Task100ms_LedCtr == 5u)
     {
       HAL_GPIO_TogglePin(LED_BRD_GPIO_Port, LED_BRD_Pin);
+      PCA9685_ToggleOutputEnable(&LedDriverHandle);
       Task100ms_LedCtr = 0u;
       BME280_ReadMeasResult();
     }
