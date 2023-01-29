@@ -27,6 +27,8 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticTask_t osStaticThreadDef_t;
+typedef StaticEventGroup_t osStaticEventGroupDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -56,9 +58,50 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
-osThreadId Taks10msHandle;
-osThreadId Task100msHandle;
-osThreadId TaskAsyncHandle;
+/* Definitions for Taks10ms */
+osThreadId_t Taks10msHandle;
+uint32_t Taks10msBuffer[ 128 ];
+osStaticThreadDef_t Taks10msControlBlock;
+const osThreadAttr_t Taks10ms_attributes = {
+  .name = "Taks10ms",
+  .cb_mem = &Taks10msControlBlock,
+  .cb_size = sizeof(Taks10msControlBlock),
+  .stack_mem = &Taks10msBuffer[0],
+  .stack_size = sizeof(Taks10msBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for Task100ms */
+osThreadId_t Task100msHandle;
+uint32_t Task100msBuffer[ 128 ];
+osStaticThreadDef_t Task100msControlBlock;
+const osThreadAttr_t Task100ms_attributes = {
+  .name = "Task100ms",
+  .cb_mem = &Task100msControlBlock,
+  .cb_size = sizeof(Task100msControlBlock),
+  .stack_mem = &Task100msBuffer[0],
+  .stack_size = sizeof(Task100msBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for TaskAsync */
+osThreadId_t TaskAsyncHandle;
+uint32_t TaskAsyncBuffer[ 128 ];
+osStaticThreadDef_t TaskAsyncControlBlock;
+const osThreadAttr_t TaskAsync_attributes = {
+  .name = "TaskAsync",
+  .cb_mem = &TaskAsyncControlBlock,
+  .cb_size = sizeof(TaskAsyncControlBlock),
+  .stack_mem = &TaskAsyncBuffer[0],
+  .stack_size = sizeof(TaskAsyncBuffer),
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for eventEspReceive */
+osEventFlagsId_t eventEspReceiveHandle;
+osStaticEventGroupDef_t myEvent01ControlBlock;
+const osEventFlagsAttr_t eventEspReceive_attributes = {
+  .name = "eventEspReceive",
+  .cb_mem = &myEvent01ControlBlock,
+  .cb_size = sizeof(myEvent01ControlBlock),
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -73,9 +116,9 @@ static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_RTC_Init(void);
-void StartTask10ms(void const * argument);
-void StartTask100ms(void const * argument);
-void StartTaskAsync(void const * argument);
+void StartTask10ms(void *argument);
+void StartTask100ms(void *argument);
+void StartTaskAsync(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -125,6 +168,9 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -142,21 +188,26 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of Taks10ms */
-  osThreadDef(Taks10ms, StartTask10ms, osPriorityNormal, 0, 128);
-  Taks10msHandle = osThreadCreate(osThread(Taks10ms), NULL);
+  /* creation of Taks10ms */
+  Taks10msHandle = osThreadNew(StartTask10ms, NULL, &Taks10ms_attributes);
 
-  /* definition and creation of Task100ms */
-  osThreadDef(Task100ms, StartTask100ms, osPriorityNormal, 0, 128);
-  Task100msHandle = osThreadCreate(osThread(Task100ms), NULL);
+  /* creation of Task100ms */
+  Task100msHandle = osThreadNew(StartTask100ms, NULL, &Task100ms_attributes);
 
-  /* definition and creation of TaskAsync */
-  osThreadDef(TaskAsync, StartTaskAsync, osPriorityLow, 0, 128);
-  TaskAsyncHandle = osThreadCreate(osThread(TaskAsync), NULL);
+  /* creation of TaskAsync */
+  TaskAsyncHandle = osThreadNew(StartTaskAsync, NULL, &TaskAsync_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* Create the event(s) */
+  /* creation of eventEspReceive */
+  eventEspReceiveHandle = osEventFlagsNew(&eventEspReceive_attributes);
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -653,7 +704,7 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_StartTask10ms */
-void StartTask10ms(void const * argument)
+void StartTask10ms(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
@@ -673,7 +724,7 @@ void StartTask10ms(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_StartTask100ms */
-void StartTask100ms(void const * argument)
+void StartTask100ms(void *argument)
 {
   /* USER CODE BEGIN StartTask100ms */
   /* Infinite loop */
@@ -691,7 +742,7 @@ void StartTask100ms(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_StartTaskAsync */
-void StartTaskAsync(void const * argument)
+void StartTaskAsync(void *argument)
 {
   /* USER CODE BEGIN StartTaskAsync */
   /* Infinite loop */
