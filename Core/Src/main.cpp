@@ -51,7 +51,7 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 #define ESP_UART_DMA_BUFFER_SIZE 1024u
 #define ESP_RX_BUFFER_SIZE       4096u
 
-#define ESP_EVENT_FLAG_MASK   0x00000001uL
+//#define ESP_EVENT_FLAG_MASK   0x00000001uL
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -131,7 +131,7 @@ bool  ESP_MessageReceived = false;
 volatile uint16_t ADC_RawData[7u] = {0u};
 float ADC_Voltage[7u];
 
-uint8_t UsbCdcTxBuffer[64u];
+uint8_t UsbCdcRxBuffer[128u];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -848,12 +848,18 @@ void StartTaskAsync(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    eventFlags = osEventFlagsWait(eventEspReceiveHandle, ESP_EVENT_FLAG_MASK, osFlagsWaitAny, osWaitForever);
-    if( eventFlags == ESP_EVENT_FLAG_MASK )
+    eventFlags = osEventFlagsWait(eventEspReceiveHandle, ESP_EVENT_FLAG_MASK | USB_EVENT_FLAG_MASK, osFlagsWaitAny, osWaitForever);
+    if( (eventFlags & ESP_EVENT_FLAG_MASK) == ESP_EVENT_FLAG_MASK )
     {
       // Process the incoming data that is not OK
       ESP8266_AtReportHandler(EspRxBuffer);
       osEventFlagsClear(eventEspReceiveHandle, ESP_EVENT_FLAG_MASK);
+    }
+    else if( (eventFlags & USB_EVENT_FLAG_MASK) == USB_EVENT_FLAG_MASK )
+    {
+      // Process the incoming data that is not OK
+      PCA9685_ToggleOutputEnable(&LedDriverHandle);
+      osEventFlagsClear(eventEspReceiveHandle, USB_EVENT_FLAG_MASK);
     }
     osDelay(1);
   }
