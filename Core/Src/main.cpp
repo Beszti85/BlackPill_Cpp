@@ -31,6 +31,8 @@
 #include <string.h>
 #include "bme280.h"
 #include "flash.h"
+#include "usb_device.h"
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -128,6 +130,8 @@ bool  ESP_MessageReceived = false;
 
 volatile uint16_t ADC_RawData[7u] = {0u};
 float ADC_Voltage[7u];
+
+uint8_t UsbCdcTxBuffer[64u];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -242,7 +246,7 @@ int main(void)
   BME280_StartMeasurement(Oversampling1, Oversampling1, Oversampling1);
   MAX30100_Init();
   PCA9685_ReadModeRegs(&LedDriverHandle);
-  ESP8266_Init(&huart1, EspRxBuffer);
+  //ESP8266_Init(&huart1, EspRxBuffer);
   HAL_Delay(10u);
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
   __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
@@ -821,7 +825,7 @@ void StartTask100ms(void *argument)
     if( Task100ms_LedCtr == 5u)
     {
       HAL_GPIO_TogglePin(LED_BRD_GPIO_Port, LED_BRD_Pin);
-      PCA9685_ToggleOutputEnable(&LedDriverHandle);
+      //PCA9685_ToggleOutputEnable(&LedDriverHandle);
       Task100ms_LedCtr = 0u;
       BME280_ReadMeasResult();
     }
