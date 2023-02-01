@@ -33,6 +33,7 @@
 #include "flash.h"
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
+#include "pc_uart_handler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -117,7 +118,7 @@ const osEventFlagsAttr_t eventEspReceive_attributes = {
 /* USER CODE BEGIN PV */
 static Button ButtonBlue = Button(false, 10u);
 
-static PCA9685_Handler_t LedDriverHandle = {.ptrHI2c = &hi2c1, .portOE = OUT_PC14_GPIO_Port, .pinOE = OUT_PC14_Pin, .Address = 0x80u };
+PCA9685_Handler_t LedDriverHandle = {.ptrHI2c = &hi2c1, .portOE = OUT_PC14_GPIO_Port, .pinOE = OUT_PC14_Pin, .Address = 0x80u };
 
 uint8_t EspDmaBuffer[ESP_UART_DMA_BUFFER_SIZE];
 uint8_t EspRxBuffer[ESP_RX_BUFFER_SIZE];
@@ -858,7 +859,7 @@ void StartTaskAsync(void *argument)
     else if( (eventFlags & USB_EVENT_FLAG_MASK) == USB_EVENT_FLAG_MASK )
     {
       // Process the incoming data that is not OK
-      PCA9685_ToggleOutputEnable(&LedDriverHandle);
+      PCUART_ProcessRxCmd(UsbCdcRxBuffer);
       osEventFlagsClear(eventEspReceiveHandle, USB_EVENT_FLAG_MASK);
     }
     osDelay(1);
