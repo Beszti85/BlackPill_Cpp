@@ -34,6 +34,7 @@
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
 #include "pc_uart_handler.h"
+#include "ds1307.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -119,6 +120,10 @@ const osEventFlagsAttr_t eventEspReceive_attributes = {
 static Button ButtonBlue = Button(false, 10u);
 
 PCA9685_Handler_t LedDriverHandle = {.ptrHI2c = &hi2c1, .portOE = OUT_PC14_GPIO_Port, .pinOE = OUT_PC14_Pin, .Address = 0x80u };
+
+DS1307_Handler_t  DS1307_Handle = { .ptrHI2c = &hi2c1, .Address = 0xD0u };
+DS1307_TimeDate_t DS1307_InitDateTime = { .Seconds = 0u, .Minutes = 0x10u, .Hours = 0x17u, .Day = 4u, .Date = 2u, .Month = 2u, .Year = 0x22u };
+DS1307_TimeDate_t DS1307_DateTime;
 
 uint8_t EspDmaBuffer[ESP_UART_DMA_BUFFER_SIZE];
 uint8_t EspRxBuffer[ESP_RX_BUFFER_SIZE];
@@ -243,6 +248,7 @@ int main(void)
   MX_TIM1_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+  //DS1307_Init(&DS1307_Handle, &DS1307_InitDateTime);
   BME280_Detect();
   BME280_StartMeasurement(Oversampling1, Oversampling1, Oversampling1);
   MAX30100_Init();
@@ -826,6 +832,7 @@ void StartTask100ms(void *argument)
     if( Task100ms_LedCtr == 5u)
     {
       HAL_GPIO_TogglePin(LED_BRD_GPIO_Port, LED_BRD_Pin);
+      DS1307_Read_Time( &DS1307_Handle, &DS1307_DateTime.Seconds, &DS1307_DateTime.Minutes, &DS1307_DateTime.Hours );
       //PCA9685_ToggleOutputEnable(&LedDriverHandle);
       Task100ms_LedCtr = 0u;
       BME280_ReadMeasResult();
