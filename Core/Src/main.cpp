@@ -206,7 +206,14 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     if( ESP_ResponseOK == false )
     {
       ESP_MessageReceived = true;
-      osEventFlagsSet(eventEspReceiveHandle, ESP_EVENT_FLAG_MASK);
+      if( ESP8266_GetLastAtCmd() != ESP8266_CMD_ID_NONE )
+      {
+        osEventFlagsSet(eventEspReceiveHandle, ESP_AT_RESPONSE_EVENT_FLAG_MASK);
+      }
+      else
+      {
+        osEventFlagsSet(eventEspReceiveHandle, ESP_AT_REPORT_EVENT_FLAG_MASK);
+      }
     }
   }
 }
@@ -257,6 +264,7 @@ int main(void)
   HAL_Delay(10u);
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
   __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+  __HAL_DMA_DISABLE_IT(&hdma_usart1_tx, DMA_IT_HT);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -856,12 +864,18 @@ void StartTaskAsync(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    eventFlags = osEventFlagsWait(eventEspReceiveHandle, ESP_EVENT_FLAG_MASK | USB_EVENT_FLAG_MASK, osFlagsWaitAny, osWaitForever);
-    if( (eventFlags & ESP_EVENT_FLAG_MASK) == ESP_EVENT_FLAG_MASK )
+    eventFlags = osEventFlagsWait(eventEspReceiveHandle, ESP_AT_REPORT_EVENT_FLAG_MASK | ESP_AT_RESPONSE_EVENT_FLAG_MASK | USB_EVENT_FLAG_MASK, osFlagsWaitAny, osWaitForever);
+    if( (eventFlags & ESP_AT_REPORT_EVENT_FLAG_MASK) == ESP_AT_REPORT_EVENT_FLAG_MASK )
     {
       // Process the incoming data that is not OK
       ESP8266_AtReportHandler(EspRxBuffer);
-      osEventFlagsClear(eventEspReceiveHandle, ESP_EVENT_FLAG_MASK);
+      osEventFlagsClear(eventEspReceiveHandle, ESP_AT_REPORT_EVENT_FLAG_MASK);
+    }
+    else if( (eventFlags & ESP_AT_RESPONSE_EVENT_FLAG_MASK) == ESP_AT_RESPONSE_EVENT_FLAG_MASK )
+    {
+      // Process the incoming data that is not OK
+      ESP8266_AtResponseHandler(EspRxBuffer);
+      osEventFlagsClear(eventEspReceiveHandle, ESP_AT_RESPONSE_EVENT_FLAG_MASK);
     }
     else if( (eventFlags & USB_EVENT_FLAG_MASK) == USB_EVENT_FLAG_MASK )
     {
