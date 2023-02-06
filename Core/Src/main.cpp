@@ -881,6 +881,8 @@ void StartTaskAsync(void *argument)
     {
       // Process the incoming data that is not OK
       PCUART_ProcessRxCmd(UsbCdcRxBuffer);
+      // clear buffer
+      memset(UsbCdcRxBuffer, 0, sizeof(UsbCdcRxBuffer));
       osEventFlagsClear(eventEspReceiveHandle, USB_EVENT_FLAG_MASK);
     }
     osDelay(1);
