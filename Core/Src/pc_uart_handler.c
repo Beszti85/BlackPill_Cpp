@@ -26,18 +26,18 @@ void PCUART_ProcessRxCmd( uint8_t* ptrBuffer )
     // go to the end of the cmd prefix
     ptrBuffer += sizeof("ESP_AT")-1;
     // Check the end of the string
-    if( *ptrBuffer != '0' )
+    if( *ptrBuffer != ' ' )
     {
       // Get the number
       PCUART_EspAtCmdNum = *ptrBuffer - '0';
       ptrBuffer++;
       // Any further characters - number > 9
-      if( *ptrBuffer != '0' )
+      if( *ptrBuffer != ' ' )
       {
         PCUART_EspAtCmdNum *= 10u;
         PCUART_EspAtCmdNum += (*ptrBuffer - '0');
       }
-      ESP8266_ProcessAtCmd( &huart1, ESP8266_CMD_ID_RST );
+      ESP8266_ProcessAtCmd( &huart1, (ESP8266_CMD_ID)PCUART_EspAtCmdNum );
     }
   }
 }

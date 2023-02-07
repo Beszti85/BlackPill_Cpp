@@ -166,7 +166,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
   if (huart->Instance == USART1)
   {
     /* Check if it is an OK: dont need to copy, just set the acknowledge flag  */
-    if( strncmp((const char*)EspDmaBuffer, "\r\nOK\r\n", 6) )
+    if( !(strncmp((const char*)EspDmaBuffer, "\r\nOK\r\n", 6)) )
     {
       ESP_ResponseOK = true;
       ESP8266_SetOkResponseFlag(true);
@@ -202,6 +202,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     /* start the DMA again */
     HAL_UARTEx_ReceiveToIdle_DMA(&huart1, (uint8_t *) EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
     __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+    __HAL_DMA_DISABLE_IT(&hdma_usart1_tx, DMA_IT_HT);
 
     if( ESP_ResponseOK == false )
     {
