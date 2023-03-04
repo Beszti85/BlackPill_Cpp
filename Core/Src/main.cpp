@@ -35,6 +35,7 @@
 #include "usbd_cdc_if.h"
 #include "pc_uart_handler.h"
 #include "ds1307.h"
+#include "mcp2515.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -119,10 +120,12 @@ const osEventFlagsAttr_t eventEspReceive_attributes = {
 /* USER CODE BEGIN PV */
 static Button ButtonBlue = Button(false, 10u);
 
-PCA9685_Handler_t LedDriverHandle = {.ptrHI2c = &hi2c1, .portOE = OUT_PC14_GPIO_Port, .pinOE = OUT_PC14_Pin, .Address = 0x80u };
+PCA9685_Handler_t LedDriverHandle = { .ptrHI2c = &hi2c1, .portOE = OUT_PC14_GPIO_Port, .pinOE = OUT_PC14_Pin, .Address = 0x80u };
+
+MCP2515_Handler_t MCP2515Handle = { .ptrHSpi = &hspi1, .portCS = CS_CAN_GPIO_Port, .pinCS = CS_CAN_Pin };
 
 DS1307_Handler_t  DS1307_Handle = { .ptrHI2c = &hi2c1, .Address = 0xD0u };
-DS1307_TimeDate_t DS1307_InitDateTime = { .Seconds = 0u, .Minutes = 0x10u, .Hours = 0x17u, .Day = 4u, .Date = 2u, .Month = 2u, .Year = 0x22u };
+DS1307_TimeDate_t DS1307_InitDateTime = { .Seconds = 0u, .Minutes = 0x37u, .Hours = 0x09u, .Day = 6u, .Date = 4u, .Month = 3u, .Year = 0x23u };
 DS1307_TimeDate_t DS1307_DateTime;
 
 uint8_t EspDmaBuffer[ESP_UART_DMA_BUFFER_SIZE];
@@ -256,11 +259,13 @@ int main(void)
   MX_TIM1_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+
   //DS1307_Init(&DS1307_Handle, &DS1307_InitDateTime);
   BME280_Detect();
   BME280_StartMeasurement(Oversampling1, Oversampling1, Oversampling1);
   MAX30100_Init();
   PCA9685_ReadModeRegs(&LedDriverHandle);
+  MCP2515_Init(&MCP2515Handle);
   //ESP8266_Init(&huart1, EspRxBuffer);
   HAL_Delay(10u);
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);

@@ -76,6 +76,8 @@ void Error_Handler(void);
 #define CS_SD_GPIO_Port GPIOB
 #define OUT_PB12_Pin GPIO_PIN_12
 #define OUT_PB12_GPIO_Port GPIOB
+#define CS_CAN_Pin GPIO_PIN_15
+#define CS_CAN_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
