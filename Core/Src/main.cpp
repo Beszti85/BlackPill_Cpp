@@ -36,6 +36,7 @@
 #include "pc_uart_handler.h"
 #include "ds1307.h"
 #include "mcp2515.h"
+#include "spi_module.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -266,6 +267,9 @@ int main(void)
   MAX30100_Init();
   PCA9685_ReadModeRegs(&LedDriverHandle);
   MCP2515_Init(&MCP2515Handle);
+#if (USE_SPI_MODULE == 1)
+  SPIMODULE_Init(&hspi1, OUT_PC14_GPIO_Port, OUT_PC14_Pin );
+#endif
   //ESP8266_Init(&huart1, EspRxBuffer);
   HAL_Delay(10u);
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);

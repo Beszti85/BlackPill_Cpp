@@ -80,7 +80,7 @@ void Error_Handler(void);
 #define CS_CAN_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+#define USE_SPI_MODULE  1
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
