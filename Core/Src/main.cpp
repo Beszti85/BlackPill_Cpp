@@ -120,7 +120,7 @@ const osEventFlagsAttr_t eventEspReceive_attributes = {
 /* USER CODE BEGIN PV */
 static Button ButtonBlue = Button(false, 10u);
 
-PCA9685_Handler_t LedDriverHandle = { .ptrHI2c = &hi2c1, .portOE = OUT_PC14_GPIO_Port, .pinOE = OUT_PC14_Pin, .Address = 0x80u };
+PCA9685_Handler_t LedDriverHandle = { .ptrHI2c = &hi2c1, .portOE = OUT_PB12_GPIO_Port, .pinOE = OUT_PB12_Pin, .Address = 0x80u };
 
 MCP2515_Handler_t MCP2515Handle = { .ptrHSpi = &hspi1, .portCS = CS_CAN_GPIO_Port, .pinCS = CS_CAN_Pin };
 
