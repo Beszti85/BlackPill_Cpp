@@ -839,6 +839,7 @@ void StartTask10ms(void *argument)
 * @retval None
 */
 uint8_t Task100ms_LedCtr = 0u;
+uint8_t DispState = 0u;
 /* USER CODE END Header_StartTask100ms */
 void StartTask100ms(void *argument)
 {
@@ -854,6 +855,18 @@ void StartTask100ms(void *argument)
       //PCA9685_ToggleOutputEnable(&LedDriverHandle);
       Task100ms_LedCtr = 0u;
       BME280_ReadMeasResult();
+#if( USE_SPI_MODULE == 1 )
+      if( DispState == 0u)
+      {
+        SPIMODULE_ToogleDisplay(DispState);
+        DispState = 1u;
+      }
+      else
+      {
+        SPIMODULE_ToogleDisplay(DispState);
+        DispState = 0u;
+      }
+#endif
     }
     osDelay(100);
   }
