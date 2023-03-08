@@ -821,13 +821,14 @@ void StartTask10ms(void *argument)
   /* Infinite loop */
   for(;;)
   {
+    SPIMODULE_DisplayCharTest();
     // Convert ADC raw data from last running
     for( uint16_t i = 0u; i < 7u; i++ )
     {
       ADC_Voltage[i] = (float)ADC_RawData[i] * 3.3f / 4096.0f;
     }
     HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_RawData[0u], 7u);
-    osDelay(10);
+    osDelay(5);
   }
   /* USER CODE END 5 */
 }
@@ -856,14 +857,15 @@ void StartTask100ms(void *argument)
       Task100ms_LedCtr = 0u;
       BME280_ReadMeasResult();
 #if( USE_SPI_MODULE == 1 )
+      SPIMODULE_UpdateDisplayTestValue();
       if( DispState == 0u)
       {
-        SPIMODULE_ToogleDisplay(DispState);
+        //SPIMODULE_ToogleDisplay(DispState);
         DispState = 1u;
       }
       else
       {
-        SPIMODULE_ToogleDisplay(DispState);
+        //SPIMODULE_ToogleDisplay(DispState);
         DispState = 0u;
       }
 #endif
