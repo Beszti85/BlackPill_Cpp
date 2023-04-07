@@ -81,7 +81,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 #define USE_SPI_MODULE  1
-#define HAL_SPI_DMA     1
+#define HAL_SPI_DMA     0
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

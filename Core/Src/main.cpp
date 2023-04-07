@@ -224,6 +224,23 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     }
   }
 }
+
+#if (HAL_SPI_DMA == 1)
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef * hspi)
+{
+  HAL_GPIO_WritePin(OUT_PC14_GPIO_Port, OUT_PC14_Pin, GPIO_PIN_SET);
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  HAL_GPIO_WritePin(OUT_PC14_GPIO_Port, OUT_PC14_Pin, GPIO_PIN_SET);
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  HAL_GPIO_WritePin(OUT_PC14_GPIO_Port, OUT_PC14_Pin, GPIO_PIN_SET);
+}
+#endif
 /* USER CODE END 0 */
 
 /**
@@ -268,7 +285,7 @@ int main(void)
   BME280_StartMeasurement(Oversampling1, Oversampling1, Oversampling1);
   MAX30100_Init();
   PCA9685_ReadModeRegs(&LedDriverHandle);
-  MCP2515_Init(&MCP2515Handle);
+  //MCP2515_Init(&MCP2515Handle);
 #if (USE_SPI_MODULE == 1)
   SPIMODULE_Init(&hspi1, OUT_PC14_GPIO_Port, OUT_PC14_Pin );
 #endif
@@ -277,6 +294,8 @@ int main(void)
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
   __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
   __HAL_DMA_DISABLE_IT(&hdma_usart1_tx, DMA_IT_HT);
+  __HAL_DMA_DISABLE_IT(&hdma_spi1_tx, DMA_IT_HT);
+  __HAL_DMA_DISABLE_IT(&hdma_spi1_rx, DMA_IT_HT);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -608,7 +627,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -838,7 +857,7 @@ void StartTask10ms(void *argument)
     {
       ADC_Voltage[i] = (float)ADC_RawData[i] * 3.3f / 4096.0f;
     }
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_RawData[0u], 7u);
+    //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_RawData[0u], 7u);
     osDelay(5);
   }
   /* USER CODE END 5 */
