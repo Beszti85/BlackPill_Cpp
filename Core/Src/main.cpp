@@ -37,6 +37,7 @@
 #include "ds1307.h"
 #include "mcp2515.h"
 #include "spi_module.h"
+#include "nrf24l01.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -130,6 +131,15 @@ MCP2515_Handler_t MCP2515Handle = { .ptrHSpi = &hspi1, .portCS = CS_CAN_GPIO_Por
 DS1307_Handler_t  DS1307_Handle = { .ptrHI2c = &hi2c1, .Address = 0xD0u };
 DS1307_TimeDate_t DS1307_InitDateTime = { .Seconds = 0u, .Minutes = 0x37u, .Hours = 0x09u, .Day = 6u, .Date = 4u, .Month = 3u, .Year = 0x23u };
 DS1307_TimeDate_t DS1307_DateTime;
+
+NRF24L01_Handler_t RFHandler =
+{
+  .ptrHSpi = &hspi1,
+  .portCS  = CS_RF_GPIO_Port,
+  .pinCS   = CS_RF_Pin,
+  .portCE  = CE_RF_GPIO_Port,
+  .pinCE   = CE_RF_Pin
+};
 
 uint8_t EspDmaBuffer[ESP_UART_DMA_BUFFER_SIZE];
 uint8_t EspRxBuffer[ESP_RX_BUFFER_SIZE];
@@ -285,6 +295,7 @@ int main(void)
   BME280_StartMeasurement(Oversampling1, Oversampling1, Oversampling1);
   MAX30100_Init();
   PCA9685_ReadModeRegs(&LedDriverHandle);
+  //NRF24L01_Init(&RFHandler);
   //MCP2515_Init(&MCP2515Handle);
 #if (USE_SPI_MODULE == 1)
   SPIMODULE_Init(&hspi1, OUT_PC14_GPIO_Port, OUT_PC14_Pin );
