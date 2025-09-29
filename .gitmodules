@@ -10,3 +10,6 @@
 	path = Modules
 	url = https://github.com/Beszti85/Modules
 	branch = main
+[submodule "FwLibraries"]
+	path = FwLibraries
+	url = https://github.com/Beszti85/FwLibraries.git
