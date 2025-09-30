@@ -132,6 +132,8 @@ DS1307_Handler_t  DS1307_Handle = { .ptrHI2c = &hi2c1, .Address = 0xD0u };
 DS1307_TimeDate_t DS1307_InitDateTime = { .Seconds = 0u, .Minutes = 0x37u, .Hours = 0x09u, .Day = 6u, .Date = 4u, .Month = 3u, .Year = 0x23u };
 DS1307_TimeDate_t DS1307_DateTime;
 
+FLASH_Handler_t FlashHandler;
+
 NRF24L01_Handler_t RFHandler =
 {
   .ptrHSpi = &hspi1,
@@ -153,7 +155,9 @@ bool  ESP_MessageReceived = false;
 volatile uint16_t ADC_RawData[7u] = {0u};
 float ADC_Voltage[7u];
 
-uint8_t UsbCdcRxBuffer[128u];
+uint8_t UsbCdcRxBuffer[256u];
+uint8_t UsbCdcTxBuffer[256u];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -801,6 +805,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -841,6 +847,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -946,7 +954,7 @@ void StartTaskAsync(void *argument)
     else if( (eventFlags & USB_EVENT_FLAG_MASK) == USB_EVENT_FLAG_MASK )
     {
       // Process the incoming data that is not OK
-      PCUART_ProcessRxCmd(UsbCdcRxBuffer);
+      (void)PCUART_ProcessRxCmd(UsbCdcRxBuffer, UsbCdcTxBuffer);
       // clear buffer
       memset(UsbCdcRxBuffer, 0, sizeof(UsbCdcRxBuffer));
       osEventFlagsClear(eventEspReceiveHandle, USB_EVENT_FLAG_MASK);
@@ -969,7 +977,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM10) {
+  if (htim->Instance == TIM10)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -991,8 +1000,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
