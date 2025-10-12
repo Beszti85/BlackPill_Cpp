@@ -38,7 +38,7 @@ uint8_t PC_ReadDataHandler( uint8_t readId, uint8_t* ptrTxBuffer )
     // Read ADC data
     case ADC_PHY_VALUES:
       memcpy(ptrTxBuffer, ADC_Voltage, sizeof(ADC_Voltage));
-      retval = 20u;
+      retval = 28u;
       break;
     // Read Humidity BME280
     case FLASH_ID:
