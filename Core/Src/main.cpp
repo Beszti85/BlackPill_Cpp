@@ -299,7 +299,7 @@ int main(void)
   BME280_StartMeasurement(Oversampling1, Oversampling1, Oversampling1);
   MAX30100_Init();
   PCA9685_ReadModeRegs(&LedDriverHandle);
-  //NRF24L01_Init(&RFHandler);
+  NRF24L01_Init(&RFHandler);
   //MCP2515_Init(&MCP2515Handle);
 #if (USE_SPI_MODULE == 1)
   SPIMODULE_Init(&hspi1, OUT_PC14_GPIO_Port, OUT_PC14_Pin );
@@ -870,13 +870,13 @@ void StartTask10ms(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    SPIMODULE_DisplayCharTest();
+    //SPIMODULE_DisplayCharTest();
     // Convert ADC raw data from last running
     for( uint16_t i = 0u; i < 7u; i++ )
     {
       ADC_Voltage[i] = (float)ADC_RawData[i] * 3.3f / 4096.0f;
     }
-    //HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_RawData[0u], 7u);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_RawData[0u], 7u);
     osDelay(5);
   }
   /* USER CODE END 5 */

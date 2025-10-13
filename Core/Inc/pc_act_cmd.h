@@ -16,6 +16,10 @@
 extern "C" {
 #endif
 
+#define NRF24L01_REG_READ   0
+#define NRF24L01_REG_WRITE  1
+#define BOARD_LED_ENDIS     2
+
 void PC_ExecCmdHandler( uint8_t* ptrRxBuffer, uint8_t* ptrTxBuffer );
 
 #ifdef __cplusplus
