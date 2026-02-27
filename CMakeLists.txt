@@ -45,11 +45,27 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+    ${CMAKE_SOURCE_DIR}/Core/Src/main.cpp
+    ${CMAKE_SOURCE_DIR}/Core/Src/pc_data_readwrite.c
+    ${CMAKE_SOURCE_DIR}/Core/Src/pc_act_cmd.c
+    ${CMAKE_SOURCE_DIR}/Core/Src/button.cpp
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/bme280.c
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/nrf24l01.c
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/flash.c
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/esp8266_at.c
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/mcp4725.c
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/ds1307.c
+    ${CMAKE_SOURCE_DIR}/FwLibraries/Src/pc_uart_handler.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
+    ${CMAKE_SOURCE_DIR}/Core/Inc
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Inc
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src
+    ${CMAKE_SOURCE_DIR}/FwLibraries/Inc
+    ${CMAKE_SOURCE_DIR}/FwLibraries/Src
 )
 
 # Add project symbols (macros)

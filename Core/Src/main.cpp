@@ -36,7 +36,7 @@
 #include "pc_uart_handler.h"
 #include "ds1307.h"
 #include "mcp2515.h"
-#include "spi_module.h"
+//#include "spi_module.h"
 #include "nrf24l01.h"
 /* USER CODE END Includes */
 
