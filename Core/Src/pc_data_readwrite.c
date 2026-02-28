@@ -11,7 +11,7 @@
 
 extern BME280_PhysValues_t BME280_PhysicalValues;
 extern FLASH_Handler_t FlashHandler;
-extern float ADC_Voltage[5u];
+extern float ADC_Voltage[7u];
 
 uint8_t PC_ReadDataHandler( uint8_t readId, uint8_t* ptrTxBuffer )
 {
@@ -22,8 +22,8 @@ uint8_t PC_ReadDataHandler( uint8_t readId, uint8_t* ptrTxBuffer )
   {
     // Read board name
     case BOARD_ID:
-      memcpy(ptrTxBuffer, "NucleoL432KC_DevBoard", sizeof("NucleoL432KC_DevBoard"));
-      retval = sizeof("NucleoL432KC_DevBoard");
+      memcpy(ptrTxBuffer, "BlackPillF411_DevBoard", sizeof("BlackPillF411_DevBoard"));
+      retval = sizeof("BlackPillF411_DevBoard");
       break;
     // Read BME280 physical values
     case BME280_PHYSICAL_VALUES:
