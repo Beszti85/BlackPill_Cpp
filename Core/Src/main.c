@@ -23,7 +23,20 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "mcp23s17.h"
+#include "pca9685pw.h"
+#include "max30100.h"
+#include "esp8266_at.h"
+#include <string.h>
+#include "bme280.h"
+#include "flash.h"
+#include "usb_device.h"
+#include "usbd_cdc_if.h"
+#include "pc_uart_handler.h"
+#include "ds1307.h"
+#include "mcp2515.h"
+//#include "spi_module.h"
+#include "nrf24l01.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,7 +52,10 @@ typedef StaticEventGroup_t osStaticEventGroupDef_t;
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define ESP_UART_DMA_BUFFER_SIZE 1024u
+#define ESP_RX_BUFFER_SIZE       4096u
 
+//#define ESP_EVENT_FLAG_MASK   0x00000001uL
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -106,6 +122,40 @@ const osEventFlagsAttr_t eventEspReceive_attributes = {
 };
 /* USER CODE BEGIN PV */
 
+PCA9685_Handler_t LedDriverHandle = { .ptrHI2c = &hi2c1, .portOE = OUT_PB12_GPIO_Port, .pinOE = OUT_PB12_Pin, .Address = 0x80u };
+
+MCP2515_Handler_t MCP2515Handle = { .ptrHSpi = &hspi1, .portCS = CS_CAN_GPIO_Port, .pinCS = CS_CAN_Pin };
+
+DS1307_Handler_t  DS1307_Handle = { .ptrHI2c = &hi2c1, .Address = 0xD0u };
+DS1307_TimeDate_t DS1307_InitDateTime = { .Seconds = 0u, .Minutes = 0x37u, .Hours = 0x09u, .Day = 6u, .Date = 4u, .Month = 3u, .Year = 0x23u };
+DS1307_TimeDate_t DS1307_DateTime;
+
+FLASH_Handler_t FlashHandler;
+
+NRF24L01_Handler_t RFHandler =
+{
+  .ptrHSpi = &hspi1,
+  .portCS  = CS_RF_GPIO_Port,
+  .pinCS   = CS_RF_Pin,
+  .portCE  = CE_RF_GPIO_Port,
+  .pinCE   = CE_RF_Pin
+};
+
+uint8_t EspDmaBuffer[ESP_UART_DMA_BUFFER_SIZE];
+uint8_t EspRxBuffer[ESP_RX_BUFFER_SIZE];
+
+uint16_t oldPos = 0;
+uint16_t newPos = 0;
+
+bool  ESP_ResponseOK = 0u;
+bool  ESP_MessageReceived = false;
+
+volatile uint16_t ADC_RawData[7u] = {0u};
+float ADC_Voltage[7u];
+
+uint8_t UsbCdcRxBuffer[256u];
+uint8_t UsbCdcTxBuffer[256u];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -128,7 +178,81 @@ void StartTaskAsync(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+  ESP_ResponseOK = false;
+  if (huart->Instance == USART1)
+  {
+    /* Check if it is an OK: dont need to copy, just set the acknowledge flag  */
+    if( !(strncmp((const char*)EspDmaBuffer, "\r\nOK\r\n", 6)) )
+    {
+      ESP_ResponseOK = true;
+      ESP8266_SetOkResponseFlag(true);
+    }
+    else
+    {
+      oldPos = newPos;  // Update the last position before copying new data
 
+      /* If the data in large and it is about to exceed the buffer size, we have to route it to the start of the buffer
+       * This is to maintain the circular buffer
+       * The old data in the main buffer will be overlapped
+       */
+      if (oldPos+Size > ESP_RX_BUFFER_SIZE)  // If the current position + new data size is greater than the main buffer
+      {
+        uint16_t datatocopy = ESP_RX_BUFFER_SIZE-oldPos;  // find out how much space is left in the main buffer
+        memcpy ((uint8_t *)EspRxBuffer+oldPos, EspDmaBuffer, datatocopy);  // copy data in that remaining space
+
+        oldPos = 0;  // point to the start of the buffer
+        memcpy ((uint8_t *)EspRxBuffer, (uint8_t *)EspDmaBuffer+datatocopy, (Size-datatocopy));  // copy the remaining data
+        newPos = (Size-datatocopy);  // update the position
+      }
+
+      /* if the current position + new data size is less than the main buffer
+       * we will simply copy the data into the buffer and update the position
+       */
+      else
+      {
+        memcpy ((uint8_t *)EspRxBuffer+oldPos, EspDmaBuffer, Size);
+        newPos = Size+oldPos;
+      }
+    }
+
+    /* start the DMA again */
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, (uint8_t *) EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
+    __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+    __HAL_DMA_DISABLE_IT(&hdma_usart1_tx, DMA_IT_HT);
+
+    if( ESP_ResponseOK == false )
+    {
+      ESP_MessageReceived = true;
+      if( ESP8266_GetLastAtCmd() != ESP8266_CMD_ID_NONE )
+      {
+        osEventFlagsSet(eventEspReceiveHandle, ESP_AT_RESPONSE_EVENT_FLAG_MASK);
+      }
+      else
+      {
+        osEventFlagsSet(eventEspReceiveHandle, ESP_AT_REPORT_EVENT_FLAG_MASK);
+      }
+    }
+  }
+}
+
+#if (HAL_SPI_DMA == 1)
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef * hspi)
+{
+  HAL_GPIO_WritePin(OUT_PC14_GPIO_Port, OUT_PC14_Pin, GPIO_PIN_SET);
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  HAL_GPIO_WritePin(OUT_PC14_GPIO_Port, OUT_PC14_Pin, GPIO_PIN_SET);
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+  HAL_GPIO_WritePin(OUT_PC14_GPIO_Port, OUT_PC14_Pin, GPIO_PIN_SET);
+}
+#endif
 /* USER CODE END 0 */
 
 /**
@@ -137,7 +261,6 @@ void StartTaskAsync(void *argument);
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -169,6 +292,23 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
+  //DS1307_Init(&DS1307_Handle, &DS1307_InitDateTime);
+  BME280_Detect();
+  BME280_StartMeasurement(Oversampling1, Oversampling1, Oversampling1);
+  MAX30100_Init();
+  PCA9685_ReadModeRegs(&LedDriverHandle);
+  NRF24L01_Init(&RFHandler);
+  //MCP2515_Init(&MCP2515Handle);
+#if (USE_SPI_MODULE == 1)
+  SPIMODULE_Init(&hspi1, OUT_PC14_GPIO_Port, OUT_PC14_Pin );
+#endif
+  //ESP8266_Init(&huart1, EspRxBuffer);
+  HAL_Delay(10u);
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart1, EspDmaBuffer, ESP_UART_DMA_BUFFER_SIZE);
+  __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+  __HAL_DMA_DISABLE_IT(&hdma_usart1_tx, DMA_IT_HT);
+  __HAL_DMA_DISABLE_IT(&hdma_spi1_tx, DMA_IT_HT);
+  __HAL_DMA_DISABLE_IT(&hdma_spi1_rx, DMA_IT_HT);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -216,7 +356,6 @@ int main(void)
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -729,7 +868,14 @@ void StartTask10ms(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    //SPIMODULE_DisplayCharTest();
+    // Convert ADC raw data from last running
+    for( uint16_t i = 0u; i < 7u; i++ )
+    {
+      ADC_Voltage[i] = (float)ADC_RawData[i] * 3.3f / 4096.0f;
+    }
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_RawData[0u], 7u);
+    osDelay(5);
   }
   /* USER CODE END 5 */
 }
@@ -740,6 +886,8 @@ void StartTask10ms(void *argument)
 * @param argument: Not used
 * @retval None
 */
+uint8_t Task100ms_LedCtr = 0u;
+uint8_t DispState = 0u;
 /* USER CODE END Header_StartTask100ms */
 void StartTask100ms(void *argument)
 {
@@ -747,7 +895,29 @@ void StartTask100ms(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    Task100ms_LedCtr++;
+    if( Task100ms_LedCtr == 5u)
+    {
+      HAL_GPIO_TogglePin(LED_BRD_GPIO_Port, LED_BRD_Pin);
+      DS1307_Read_Time( &DS1307_Handle, &DS1307_DateTime.Seconds, &DS1307_DateTime.Minutes, &DS1307_DateTime.Hours );
+      //PCA9685_ToggleOutputEnable(&LedDriverHandle);
+      Task100ms_LedCtr = 0u;
+      BME280_ReadMeasResult();
+#if( USE_SPI_MODULE == 1 )
+      SPIMODULE_UpdateDisplayTestValue();
+      if( DispState == 0u)
+      {
+        //SPIMODULE_ToogleDisplay(DispState);
+        DispState = 1u;
+      }
+      else
+      {
+        //SPIMODULE_ToogleDisplay(DispState);
+        DispState = 0u;
+      }
+#endif
+    }
+    osDelay(100);
   }
   /* USER CODE END StartTask100ms */
 }
@@ -762,9 +932,31 @@ void StartTask100ms(void *argument)
 void StartTaskAsync(void *argument)
 {
   /* USER CODE BEGIN StartTaskAsync */
+  uint32_t eventFlags = 0u;
   /* Infinite loop */
   for(;;)
   {
+    eventFlags = osEventFlagsWait(eventEspReceiveHandle, ESP_AT_REPORT_EVENT_FLAG_MASK | ESP_AT_RESPONSE_EVENT_FLAG_MASK | USB_EVENT_FLAG_MASK, osFlagsWaitAny, osWaitForever);
+    if( (eventFlags & ESP_AT_REPORT_EVENT_FLAG_MASK) == ESP_AT_REPORT_EVENT_FLAG_MASK )
+    {
+      // Process the incoming data that is not OK
+      ESP8266_AtReportHandler(EspRxBuffer);
+      osEventFlagsClear(eventEspReceiveHandle, ESP_AT_REPORT_EVENT_FLAG_MASK);
+    }
+    else if( (eventFlags & ESP_AT_RESPONSE_EVENT_FLAG_MASK) == ESP_AT_RESPONSE_EVENT_FLAG_MASK )
+    {
+      // Process the incoming data that is not OK
+      ESP8266_AtResponseHandler(EspRxBuffer);
+      osEventFlagsClear(eventEspReceiveHandle, ESP_AT_RESPONSE_EVENT_FLAG_MASK);
+    }
+    else if( (eventFlags & USB_EVENT_FLAG_MASK) == USB_EVENT_FLAG_MASK )
+    {
+      // Process the incoming data that is not OK
+      (void)PCUART_ProcessRxCmd(UsbCdcRxBuffer, UsbCdcTxBuffer);
+      // clear buffer
+      memset(UsbCdcRxBuffer, 0, sizeof(UsbCdcRxBuffer));
+      osEventFlagsClear(eventEspReceiveHandle, USB_EVENT_FLAG_MASK);
+    }
     osDelay(1);
   }
   /* USER CODE END StartTaskAsync */

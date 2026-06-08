@@ -45,16 +45,17 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-    ${CMAKE_SOURCE_DIR}/Core/Src/main.cpp
+    ${CMAKE_SOURCE_DIR}/Core/Src/main.c
     ${CMAKE_SOURCE_DIR}/Core/Src/pc_data_readwrite.c
     ${CMAKE_SOURCE_DIR}/Core/Src/pc_act_cmd.c
-    ${CMAKE_SOURCE_DIR}/Core/Src/button.cpp
     ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/bme280.c
     ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/nrf24l01.c
     ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/flash.c
     ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/esp8266_at.c
     ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/mcp4725.c
     ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/ds1307.c
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/max30100.c
+    ${CMAKE_SOURCE_DIR}/ChipDrivers/Src/pca9685pw.c
     ${CMAKE_SOURCE_DIR}/FwLibraries/Src/pc_uart_handler.c
 )
 
