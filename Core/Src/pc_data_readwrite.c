@@ -13,6 +13,10 @@ extern BME280_PhysValues_t BME280_PhysicalValues;
 extern FLASH_Handler_t FlashHandler;
 extern float ADC_Voltage[7u];
 
+// Static module variables
+uint32_t PcExtFlashReadAddress = 0u;
+uint32_t PcExtFlashReadLength = 0u;
+
 uint8_t PC_ReadDataHandler( uint8_t readId, uint8_t* ptrTxBuffer )
 {
   // return value is the length of the response
@@ -50,4 +54,25 @@ uint8_t PC_ReadDataHandler( uint8_t readId, uint8_t* ptrTxBuffer )
   }
 
   return retval;
+}
+
+// Data write handler
+void PC_WriteDataHandler( uint8_t* ptrTxBuffer )
+{
+  uint8_t writeId = ptrTxBuffer[0];
+  switch (writeId)
+  {
+    // Set flash read address
+    case FLASH_CFG_WRITE:
+      memcpy(&PcExtFlashReadAddress, ptrTxBuffer, sizeof(PcExtFlashReadAddress));
+      memcpy(&PcExtFlashReadLength, ptrTxBuffer + sizeof(PcExtFlashReadAddress), sizeof(PcExtFlashReadLength));
+      break;
+    case LED_PWM:
+      //memcpy(&TIM1_PwmDutyCycle, ptrTxBuffer, sizeof(TIM1_PwmDutyCycle)); 
+      break;
+    case DAC_OUTPUT:
+      break;
+    default:
+      break;
+  }
 }
